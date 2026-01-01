@@ -4,6 +4,11 @@ import { AdminSidebar } from "@/components/AdminSidebar"
 import { AnalyticsCharts } from "@/components/AnalyticsCharts"
 import { TrendingUp, Users, CheckCircle } from "lucide-react"
 
+interface ApplicationAnalytics {
+  status: any;
+  profiles: { branch: any }[] | null;
+}
+
 async function getAnalyticsData() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -12,8 +17,6 @@ async function getAnalyticsData() {
     { cookies: { get(name) { return cookieStore.get(name)?.value } } }
   )
 
-  // 1. Fetch all applications with student profiles
-  // We need to know the branch of every applicant
   const { data: applications } = await supabase
     .from('applications')
     .select(`
@@ -23,12 +26,9 @@ async function getAnalyticsData() {
 
   if (!applications) return { branchStats: [], statusStats: [], total: 0 }
 
-  // --- PROCESS DATA FOR CHART 1: BY BRANCH ---
   const branchCounts: Record<string, number> = {}
-  
-  applications.forEach((app: any) => {
-    // If profile exists and has a branch, count it. Otherwise call it 'Unknown'
-    const branch = app.profiles?.branch || 'Unknown'
+  applications.forEach((app: ApplicationAnalytics) => {
+    const branch = app.profiles?.[0]?.branch || 'Unknown'
     branchCounts[branch] = (branchCounts[branch] || 0) + 1
   })
 
@@ -37,17 +37,15 @@ async function getAnalyticsData() {
     applications: branchCounts[branch]
   }))
 
-  // --- PROCESS DATA FOR CHART 2: BY STATUS ---
   const statusCounts: Record<string, number> = {
     'Pending': 0, 'Shortlisted': 0, 'Rejected': 0, 'Selected': 0
   }
-
-  applications.forEach((app: any) => {
+  applications.forEach((app: ApplicationAnalytics) => {
     const status = app.status || 'Pending'
     if (statusCounts[status] !== undefined) {
       statusCounts[status]++
     } else {
-      statusCounts[status] = 1 // Handle unexpected statuses
+      statusCounts[status] = 1 
     }
   })
 
@@ -63,7 +61,8 @@ export default async function AnalyticsPage() {
   const { branchStats, statusStats, total } = await getAnalyticsData()
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
+    // ✅ FIX: Added 'flex-col lg:flex-row' for responsive layout
+    <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50 font-sans">
       <AdminSidebar />
 
       <main className="flex-1 p-8 lg:p-12 overflow-y-auto">

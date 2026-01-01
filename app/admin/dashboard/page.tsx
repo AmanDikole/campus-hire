@@ -1,15 +1,22 @@
 import { AdminSidebar } from "@/components/AdminSidebar"
 import { supabase } from "@/lib/supabase"
-import { Users, Briefcase, TrendingUp, Plus, Search } from "lucide-react"
+import { Users, Briefcase, TrendingUp, Plus } from "lucide-react"
 import Link from "next/link"
-import { DashboardRow } from "@/components/DashboardRow" // ✅ Import the new component
+import { DashboardRow } from "@/components/DashboardRow"
+import { ReactNode } from "react"
+
+interface Application {
+  id: string;
+  applied_at: string;
+  jobs: { title: string; company: string };
+  profiles: { full_name: string };
+}
 
 async function getAdminStats() {
   const { count: studentCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true })
   const { count: jobCount } = await supabase.from('jobs').select('*', { count: 'exact', head: true })
   const { count: appCount } = await supabase.from('applications').select('*', { count: 'exact', head: true })
 
-  // ✅ Fetch Profiles too for the name
   const { data: recentApps } = await supabase
     .from('applications')
     .select('*, jobs(title, company), profiles(full_name)') 
@@ -23,15 +30,17 @@ export default async function AdminDashboard() {
   const { studentCount, jobCount, appCount, recentApps } = await getAdminStats()
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
+    // ✅ FIX: Added 'flex-col lg:flex-row' here
+    <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50 font-sans">
+      
       <AdminSidebar/>
 
-      <main className="flex-1 p-8 lg:p-12 overflow-y-auto">
+      <main className="flex-1 p-6 lg:p-12 overflow-y-auto">
         {/* Header */}
-        <header className="flex justify-between items-center mb-10">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Overview</h1>
-            <p className="text-gray-500 mt-1">Welcome back. Here's what's happening today.</p>
+            <p className="text-gray-500 mt-1">Welcome back. Here&apos;s what&apos;s happening today.</p>
           </div>
           <Link 
             href="/admin/post-job" 
@@ -51,32 +60,32 @@ export default async function AdminDashboard() {
 
         {/* Data Table */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-8 border-b border-gray-100 flex justify-between items-center">
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
             <div>
                <h3 className="font-bold text-lg text-gray-900">Recent Applications</h3>
                <p className="text-gray-500 text-sm">Real-time application tracking</p>
             </div>
           </div>
           
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-gray-500 font-medium">
-              <tr>
-                <th className="px-8 py-4">Candidate</th>
-                <th className="px-8 py-4">Applying For</th>
-                <th className="px-8 py-4">Applied Date</th>
-                <th className="px-8 py-4">Status</th>
-                <th className="px-8 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {recentApps?.map((app: any) => (
-                // ✅ Use the new interactive row
-                <DashboardRow key={app.id} app={app} />
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto"> {/* ✅ FIX: Added scroll for small screens */}
+            <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50/50 text-gray-500 font-medium">
+                <tr>
+                    <th className="px-8 py-4 whitespace-nowrap">Candidate</th>
+                    <th className="px-8 py-4 whitespace-nowrap">Applying For</th>
+                    <th className="px-8 py-4 whitespace-nowrap">Applied Date</th>
+                    <th className="px-8 py-4 whitespace-nowrap">Status</th>
+                    <th className="px-8 py-4 text-right whitespace-nowrap">Actions</th>
+                </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                {recentApps?.map((app: Application) => (
+                    <DashboardRow key={app.id} app={app} />
+                ))}
+                </tbody>
+            </table>
+          </div>
           
-          {/* ✅ FIXED: View All Button is now a Link */}
           <div className="p-4 bg-gray-50/50 text-center border-t border-gray-100">
             <Link 
               href="/admin/students" 
@@ -91,8 +100,8 @@ export default async function AdminDashboard() {
   )
 }
 
-function StatCard({ label, val, icon: Icon, trend, color }: any) {
-  const colors: any = {
+function StatCard({ label, val, icon: Icon, trend, color }: { label: string; val: number; icon: React.ComponentType<{ size?: number; className?: string }>; trend: string; color: string }) {
+  const colors: Record<string, string> = {
     blue: "bg-blue-50 text-blue-600",
     purple: "bg-purple-50 text-purple-600",
     emerald: "bg-emerald-50 text-emerald-600"

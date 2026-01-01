@@ -1,57 +1,39 @@
 'use server'
-
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 
 export async function updateStatus(applicationId: string, newStatus: string) {
   const cookieStore = await cookies()
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { get(name) { return cookieStore.get(name)?.value } } }
   )
 
-  // 1. Update the Application Status
-  const { data: application, error } = await supabase
+  // 1. Update Status
+  const { data: app, error } = await supabase
     .from('applications')
     .update({ status: newStatus })
     .eq('id', applicationId)
-    .select('student_id, jobs(title, company)') 
+    .select('student_id, jobs(title, company)')
     .single()
 
   if (error) return { success: false, error: error.message }
 
-  // ---------------------------------------------------------
-  // ✅ THE FIX IS HERE
-  // We check if 'jobs' is an array. If yes, take the first item.
-  // ---------------------------------------------------------
-  const jobData = Array.isArray(application.jobs) ? application.jobs[0] : application.jobs
+  // 2. Handle Array/Object inconsistency
+  const job = Array.isArray(app.jobs) ? app.jobs[0] : app.jobs
+  if (!job) return { success: true } // Safety check
 
-  if (!jobData) {
-    // Safety check: If job data is missing, return success but don't crash
-    return { success: true }
-  }
+  // 3. Create Notification
+  let msg = `Your application for ${job.title} at ${job.company} is now: ${newStatus}.`
+  if (newStatus === 'Shortlisted') msg = `🎉 Great news! You are Shortlisted for ${job.title}.`
+  if (newStatus === 'Rejected') msg = `Update on your application for ${job.title}.`
 
-  // 2. Create the Notification Message
-  // notice we use 'jobData.title' here, NOT 'application.jobs.title'
-  let message = `Your application for ${jobData.title} at ${jobData.company} has been updated to: ${newStatus}.`
-  let type = 'info'
-
-  if (newStatus === 'Shortlisted') {
-    message = `🎉 Congratulations! You have been Shortlisted for ${jobData.title} at ${jobData.company}!`
-    type = 'success'
-  } else if (newStatus === 'Rejected') {
-    message = `Update: Your application for ${jobData.title} was not selected.`
-    type = 'error'
-  }
-
-  // 3. Insert Notification
   await supabase.from('notifications').insert([{
-    student_id: application.student_id,
-    message: message,
-    type: type
+    student_id: app.student_id,
+    message: msg,
+    type: newStatus === 'Shortlisted' ? 'success' : 'info'
   }])
 
   revalidatePath('/admin/students')

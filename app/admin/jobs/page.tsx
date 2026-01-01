@@ -5,6 +5,11 @@ import { JobControlCard } from "@/components/JobControlCard"// We create this ne
 import { Plus, Briefcase } from "lucide-react"
 import Link from "next/link"
 
+interface JobWithCount {
+  id: string;
+  applications: { count: number }[];
+}
+
 export default async function ManageJobs() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -21,8 +26,8 @@ export default async function ManageJobs() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
-      <AdminSidebar />
+<div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
+        <AdminSidebar />
 
       <main className="flex-1 p-8 lg:p-12 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
@@ -39,7 +44,7 @@ export default async function ManageJobs() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {jobs?.map((job: any) => (
+            {jobs?.map((job: JobWithCount) => (
               <JobControlCard 
                 key={job.id} 
                 job={job} 

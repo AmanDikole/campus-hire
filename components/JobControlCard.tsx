@@ -1,86 +1,102 @@
 'use client'
+
+import { toast } from "sonner" // ✅ Import Sonner
 import { useState } from "react"
-import { toggleJobStatus, deleteJob } from "@/actions/job-actions"
-import { Trash2, Users, MapPin, Calendar, Power, Loader2, Eye } from "lucide-react"
+import { toggleJobStatus } from "@/actions/toggle-job-status"
+import { Building2, Users, Calendar, Power, Eye, Loader2 } from "lucide-react"
+import Link from "next/link"
 
 export function JobControlCard({ job, applicantCount }: { job: any, applicantCount: number }) {
   const [loading, setLoading] = useState(false)
 
-  const handleToggle = async () => {
+  const handleToggleStatus = async () => {
+    // Optional: You can use toast.promise() for even better UX, but let's keep it simple
     setLoading(true)
-    await toggleJobStatus(job.id, job.is_active)
+    const result = await toggleJobStatus(job.id, job.is_active)
+    
+    if (!result.success) {
+      toast.error(result.error) // ✅ Toast Error
+    } else {
+      const statusMsg = job.is_active ? "Drive Closed" : "Drive Activated"
+      toast.success(statusMsg) // ✅ Toast Success
+    }
     setLoading(false)
   }
 
-  const handleDelete = async () => {
-    if (confirm("Are you sure? This will delete the job and ALL associated applications permanently.")) {
-      setLoading(true)
-      await deleteJob(job.id)
-      setLoading(false)
-    }
-  }
-
+  // ... rest of the component (JSX) stays exactly the same ...
   return (
-    <div className={`p-6 rounded-2xl border transition-all relative ${
-      job.is_active 
-        ? "bg-white border-gray-200 shadow-sm" 
-        : "bg-gray-50 border-gray-200 opacity-80"
-    }`}>
-      
-      {/* Header */}
+    <div className={`group bg-white rounded-2xl p-6 border transition-all hover:shadow-lg ${job.is_active ? 'border-gray-200' : 'border-gray-100 bg-gray-50/50'}`}>
+        {/* ... (Keep your JSX code) ... */}
+        
+        {/* Header: Company & Status */}
       <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="font-bold text-lg text-gray-900 line-clamp-1">{job.title}</h3>
-          <p className="text-sm text-gray-500 font-medium">{job.company}</p>
+        <div className="flex gap-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold border ${job.is_active ? 'bg-white border-gray-100 shadow-sm text-black' : 'bg-gray-100 text-gray-400 border-transparent'}`}>
+            {job.company.charAt(0)}
+          </div>
+          <div>
+            <h3 className={`font-bold text-lg leading-tight ${job.is_active ? 'text-gray-900' : 'text-gray-500'}`}>
+              {job.title}
+            </h3>
+            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+              <Building2 size={14} />
+              <span>{job.company}</span>
+            </div>
+          </div>
         </div>
-        <div className={`px-3 py-1 rounded-full text-xs font-bold border ${
+
+        {/* Status Badge */}
+        <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
           job.is_active 
-            ? "bg-green-50 text-green-700 border-green-200 flex items-center gap-1" 
-            : "bg-gray-200 text-gray-600 border-gray-300"
+            ? 'bg-green-50 text-green-700 border-green-200' 
+            : 'bg-gray-100 text-gray-500 border-gray-200'
         }`}>
-          {job.is_active ? <><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/> Active</> : "Closed"}
-        </div>
+          <span className={`w-1.5 h-1.5 rounded-full ${job.is_active ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+          {job.is_active ? 'Active' : 'Closed'}
+        </span>
       </div>
 
       {/* Stats Row */}
-      <div className="flex items-center gap-4 text-sm text-gray-600 mb-6">
-        <div className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-          <Users size={14} className="text-blue-500" />
-          <span className="font-semibold text-gray-900">{applicantCount}</span> Applicants
+      <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-100 mb-4">
+        <div className="flex items-center gap-3">
+           <div className="bg-blue-50 text-blue-600 p-2 rounded-lg"><Users size={18} /></div>
+           <div>
+             <p className="text-xs text-gray-400 font-medium uppercase">Applicants</p>
+             <p className="font-bold text-gray-900">{applicantCount}</p>
+           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <MapPin size={14} className="text-gray-400" /> {job.location}
+        <div className="flex items-center gap-3">
+           <div className="bg-purple-50 text-purple-600 p-2 rounded-lg"><Calendar size={18} /></div>
+           <div>
+             <p className="text-xs text-gray-400 font-medium uppercase">Posted On</p>
+             <p className="font-bold text-gray-900">{new Date(job.created_at).toLocaleDateString()}</p>
+           </div>
         </div>
       </div>
 
-      {/* Control Actions */}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-        
-        {/* Toggle Switch Button */}
-        <button 
-          onClick={handleToggle}
-          disabled={loading}
-          className={`flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg transition-colors ${
-             job.is_active 
-               ? "text-orange-600 hover:bg-orange-50" 
-               : "text-green-600 hover:bg-green-50"
-          }`}
+      {/* Action Buttons */}
+      <div className="flex gap-3">
+        {/* View Candidates Button */}
+        <Link 
+          href={`/admin/students?jobId=${job.id}`}
+          className="flex-1 bg-black text-white py-2.5 rounded-xl text-sm font-medium hover:bg-zinc-800 transition flex justify-center items-center gap-2"
         >
-          {loading ? <Loader2 size={14} className="animate-spin"/> : <Power size={14} />}
-          {job.is_active ? "Close Drive" : "Activate Drive"}
-        </button>
+          <Eye size={16} /> View Candidates
+        </Link>
 
-        <div className="flex gap-2">
-          {/* Delete Button */}
-          <button 
-            onClick={handleDelete}
-            disabled={loading}
-            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            title="Delete Job"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
+        {/* Close/Activate Button */}
+        <button 
+          onClick={handleToggleStatus}
+          disabled={loading}
+          className={`px-4 py-2.5 rounded-xl border text-sm font-medium transition flex items-center justify-center gap-2 ${
+            job.is_active 
+              ? 'border-red-100 text-red-600 hover:bg-red-50' 
+              : 'border-green-100 text-green-600 hover:bg-green-50'
+          }`}
+          title={job.is_active ? "Close Drive" : "Re-activate Drive"}
+        >
+          {loading ? <Loader2 size={18} className="animate-spin" /> : <Power size={18} />}
+        </button>
       </div>
     </div>
   )

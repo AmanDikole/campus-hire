@@ -1,11 +1,13 @@
 'use client'
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import { 
-  LayoutDashboard, Briefcase, Users, TrendingUp, Building2, Settings, LogOut
+  LayoutDashboard, Briefcase, Users, TrendingUp, Building2, Settings, LogOut, Loader2 
 } from "lucide-react"
-import { MobileNav } from "@/components/MobileNav" // ✅ Import
+import { MobileNav } from "@/components/MobileNav"
 
 const menuItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -19,8 +21,24 @@ export function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  
+  // State for dynamic data
+  const [email, setEmail] = useState<string>("Loading...")
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  // 1. Fetch Admin Email on Mount
+  useEffect(() => {
+    async function getUser() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.email) {
+        setEmail(user.email)
+      }
+    }
+    getUser()
+  }, [supabase])
 
   const handleLogout = async () => {
+    setIsLoggingOut(true)
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
@@ -28,35 +46,52 @@ export function AdminSidebar() {
 
   return (
     <>
-      {/* ✅ 1. MOBILE NAV */}
-      <MobileNav menuItems={menuItems} role="admin" />
+      {/* ✅ 1. MOBILE NAV (Now receives dynamic email) */}
+      <MobileNav menuItems={menuItems} role="admin" userEmail={email} />
 
       {/* ✅ 2. DESKTOP SIDEBAR */}
       <aside className="hidden lg:flex w-72 bg-[#09090b] text-white flex-col border-r border-gray-800 sticky top-0 h-screen">
-        <div className="p-8">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-900/20">
+        <div className="p-6">
+          
+          {/* Logo Section */}
+          <div className="flex items-center gap-3 mb-10 px-2 mt-2">
+            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-900/20">
               <Building2 size={20} className="text-white" />
             </div>
-            <span className="font-bold text-lg tracking-tight">
-              CampusHire <span className="text-gray-500 font-normal">Admin</span>
-            </span>
+            <div>
+              <span className="font-bold text-lg tracking-tight block leading-none">
+                CampusHire
+              </span>
+              <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+                Admin Portal
+              </span>
+            </div>
           </div>
 
-          <nav className="space-y-2">
+          {/* Navigation */}
+          <nav className="space-y-1.5">
             {menuItems.map((item) => {
-              const isActive = pathname === item.href
+              // Smart Active Logic: Exact match for dashboard, partial match for others
+              const isActive = item.href === '/admin/dashboard' 
+                ? pathname === item.href 
+                : pathname.startsWith(item.href)
+
               return (
                 <Link 
                   key={item.href}
                   href={item.href} 
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group relative ${
                     isActive 
                       ? "bg-white/10 text-white shadow-sm border border-white/5" 
                       : "text-gray-400 hover:text-white hover:bg-white/5"
                   }`}
                 >
-                  <item.icon size={18} className={isActive ? "text-blue-400" : "text-gray-500 group-hover:text-gray-300"} /> 
+                  {/* Active Indicator Dot */}
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full"></div>
+                  )}
+
+                  <item.icon size={18} className={`transition-colors ${isActive ? "text-blue-400" : "text-gray-500 group-hover:text-gray-300"}`} /> 
                   {item.name}
                 </Link>
               )
@@ -64,16 +99,29 @@ export function AdminSidebar() {
           </nav>
         </div>
 
-        <div className="mt-auto p-6 border-t border-gray-800">
+        {/* Footer / User Profile */}
+        <div className="mt-auto p-6 border-t border-gray-800 bg-black/20">
           <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 border border-gray-700"></div>
-            <div>
-              <p className="text-sm font-medium text-white">Placement Officer</p>
-              <p className="text-xs text-gray-500">admin@college.edu</p>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border border-gray-700 flex items-center justify-center text-xs font-bold shadow-lg">
+              AD
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-sm font-medium text-white truncate">Placement Officer</p>
+              <p className="text-xs text-gray-500 truncate" title={email}>{email}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200">
-            <LogOut size={18} /> Sign Out
+          
+          <button 
+            onClick={handleLogout} 
+            disabled={isLoggingOut}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200 border border-transparent hover:border-red-900/30"
+          >
+            {isLoggingOut ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <LogOut size={18} />
+            )}
+            {isLoggingOut ? "Signing out..." : "Sign Out"}
           </button>
         </div>
       </aside>

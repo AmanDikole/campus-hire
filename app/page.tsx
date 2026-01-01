@@ -3,7 +3,7 @@ import Link from "next/link"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { 
   ArrowRight, Building2, GraduationCap, Briefcase, 
-  Users, CheckCircle2, ShieldCheck, Star, Sparkles
+  Sparkles
 } from "lucide-react"
 
 export default function LandingPage() {
@@ -158,7 +158,7 @@ export default function LandingPage() {
 // Components & Data
 const logos = ["GOOGLE", "MICROSOFT", "AMAZON", "NETFLIX", "META", "UBER", "AIRBNB", "SPOTIFY"]
 
-function StatBox({ val, label }: any) {
+function StatBox({ val, label }: { val: string; label: string }) {
   return (
     <div className="text-center">
       <h3 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">{val}</h3>

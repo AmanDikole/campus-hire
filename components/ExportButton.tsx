@@ -1,4 +1,5 @@
 'use client'
+
 import { Download } from "lucide-react"
 
 export function ExportButton({ data }: { data: any[] }) {
@@ -6,49 +7,44 @@ export function ExportButton({ data }: { data: any[] }) {
   const handleExport = () => {
     if (!data || data.length === 0) return alert("No data to export")
 
-    // 1. Flatten the data for Excel (Handle nested objects)
-    const csvRows = []
+    // 1. Define CSV Headers
+    const headers = ["Candidate Name", "Email", "Job Title", "Company", "Branch", "CGPA", "Status", "Applied Date"]
     
-    // Headers
-    const headers = ["Student Name", "Email", "Branch", "CGPA", "Job Title", "Company", "Status", "Applied Date"]
-    csvRows.push(headers.join(','))
+    // 2. Map Data to Rows
+    const rows = data.map(app => [
+      app.profiles?.full_name || "Unknown",
+      app.student_email,
+      app.jobs?.title,
+      app.jobs?.company,
+      app.profiles?.branch,
+      app.profiles?.cgpa,
+      app.status,
+      new Date(app.created_at).toLocaleDateString()
+    ])
 
-    // Rows
-    data.forEach(row => {
-      const profile = row.profiles || {}
-      const job = row.jobs || {}
-      
-      const values = [
-        `"${profile.full_name || 'N/A'}"`,     // Quotes handle names with commas
-        `"${row.student_email}"`,
-        `"${profile.branch || 'N/A'}"`,
-        `"${profile.cgpa || 'N/A'}"`,
-        `"${job.title || 'N/A'}"`,
-        `"${job.company || 'N/A'}"`,
-        `"${row.status}"`,
-        `"${new Date(row.created_at).toLocaleDateString()}"`
-      ]
-      csvRows.push(values.join(','))
-    })
+    // 3. Convert to CSV String
+    const csvContent = [
+      headers.join(","), 
+      ...rows.map(row => row.join(","))
+    ].join("\n")
 
-    // 2. Create File Blob
-    const csvString = csvRows.join('\n')
-    const blob = new Blob([csvString], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    
-    // 3. Trigger Download
-    const a = document.createElement('a')
-    a.setAttribute('href', url)
-    a.setAttribute('download', `placement_report_${new Date().toISOString().split('T')[0]}.csv`)
-    a.click()
+    // 4. Trigger Download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", `applications_export_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
   }
 
   return (
     <button 
       onClick={handleExport}
-      className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition shadow-sm"
+      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
     >
-      <Download size={16} /> Export CSV
+      <Download size={16} />
+      Export CSV
     </button>
   )
 }
