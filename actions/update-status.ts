@@ -18,16 +18,24 @@ export async function updateStatus(applicationId: string, newStatus: string) {
     .from('applications')
     .update({ status: newStatus })
     .eq('id', applicationId)
-    .select('student_id, jobs(title, company)') // Fetch details for the message
+    .select('student_id, jobs(title, company)') 
     .single()
 
   if (error) return { success: false, error: error.message }
 
-  // ✅ FIX: Safely access 'jobs'. TypeScript thinks it might be an array.
-  // We check: Is it an array? If yes, take the first item. If no, use it directly.
+  // ---------------------------------------------------------
+  // ✅ THE FIX IS HERE
+  // We check if 'jobs' is an array. If yes, take the first item.
+  // ---------------------------------------------------------
   const jobData = Array.isArray(application.jobs) ? application.jobs[0] : application.jobs
 
+  if (!jobData) {
+    // Safety check: If job data is missing, return success but don't crash
+    return { success: true }
+  }
+
   // 2. Create the Notification Message
+  // notice we use 'jobData.title' here, NOT 'application.jobs.title'
   let message = `Your application for ${jobData.title} at ${jobData.company} has been updated to: ${newStatus}.`
   let type = 'info'
 
