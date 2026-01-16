@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. The Tenant (College)
+model College {
+  id          String   @id @default(cuid())
+  name        String
+  subdomain   String   @unique
+  location    String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+
+  users         User[]
+  jobs          Job[]
+  applications  Application[]
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String
+  password      String
+  role          String    @default("student")
+  createdAt     DateTime  @default(now())
+  
+  collegeId     String
+  college       College   @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  profile       Profile?
+  applications  Application[]
+  notifications Notification[]
+
+  @@unique([email, collegeId])
+}
+
+model Profile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  fullName        String?
+  branch          String?
+  cgpa            Float    @default(0)
+  percent10th     Float    @default(0)
+  percent12th     Float    @default(0)
+  percentDiploma  Float    @default(0)
+  gender          String   @default("Male")
+  resumeUrl       String?
+  linkedinUrl     String?
+  portfolioUrl    String?
+  updatedAt       DateTime @updatedAt
+}
+
+model Job {
+  id                String   @id @default(uuid())
+  title             String
+  company           String
+  location          String
+  salary            String
+  description       String
+  isActive          Boolean  @default(true)
+  
+  minCgpa           Float    @default(0)
+  min10thPercent    Float    @default(0)
+  min12thPercent    Float    @default(0)
+  minDiplomaPercent Float    @default(0)
+  eligibleGender    String   @default("Any")
+  eligibleBranches  String[] 
+  createdAt         DateTime @default(now())
+  
+  collegeId         String
+  college           College   @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  applications      Application[]
+}
+
+model Application {
+  id        String   @id @default(uuid())
+  
+  collegeId String
+  college   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  status    String   @default("Pending")
+  appliedAt DateTime @default(now())
+
+  @@unique([jobId, studentId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
