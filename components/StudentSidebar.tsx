@@ -3,35 +3,41 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { signOut } from "next-auth/react" // ✅ NextAuth
-import { getUserSession } from "@/actions/get-user" // ✅ Helper
+import { signOut } from "next-auth/react"
+import { getUserSession } from "@/actions/get-user"
+import { getUnreadCountAction } from "@/actions/notifications" 
 import { LayoutDashboard, Briefcase, User, Bell, LogOut, Loader2, Building2 } from "lucide-react"
 import { MobileNav } from "@/components/MobileNav"
 
 const menuItems = [
   { label: "Jobs Feed", icon: LayoutDashboard, href: "/student" },
-  { label: "My Applications", icon: Briefcase, href: "/student/applications" },
-  { label: "Notifications", icon: Bell, href: "/student/notifications" },
+  { label: "My Applications", icon: Briefcase, href: "/student/applications", hasBadge: true },
+  { label: "Notifications", icon: Bell, href: "/student/notifications", hasBadge: true },
   { label: "My Profile", icon: User, href: "/student/profile" },
 ]
 
 export function StudentSidebar() {
   const pathname = usePathname()
   const [email, setEmail] = useState<string>("Loading...")
+  const [unreadCount, setUnreadCount] = useState(0)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  // ✅ Fetch User
   useEffect(() => {
-    async function getUser() {
+    async function initSidebar() {
       const user = await getUserSession()
-      if (user?.email) setEmail(user.email)
+      if (user?.email) {
+        setEmail(user.email)
+        // ✅ Fetch unread notification count
+        const count = await getUnreadCountAction()
+        setUnreadCount(count)
+      }
     }
-    getUser()
-  }, [])
+    initSidebar()
+  }, [pathname]) // Re-check whenever the user navigates
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
-    await signOut({ callbackUrl: '/login' }) // ✅ NextAuth Logout
+    await signOut({ callbackUrl: '/login' })
   }
 
   const mobileItems = menuItems.map(i => ({ name: i.label, href: i.href, icon: i.icon }))
@@ -40,9 +46,7 @@ export function StudentSidebar() {
     <>
       <MobileNav menuItems={mobileItems} role="student" userEmail={email} />
       <aside className="hidden lg:flex w-72 bg-white border-r border-gray-200 flex-col sticky top-0 h-screen z-40">
-        {/* ... (Paste the rest of your StudentSidebar JSX here, identical to before) ... */}
-        {/* If you need it reprinted, let me know! */}
-         <div className="p-8 pb-4">
+        <div className="p-8 pb-4">
           <div className="flex items-center gap-2.5 mb-8">
             <div className="bg-black text-white p-2 rounded-xl"><Building2 size={20} /></div>
             <div>
@@ -55,15 +59,30 @@ export function StudentSidebar() {
             {menuItems.map((item) => {
               const isActive = pathname === item.href
               return (
-                <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative group ${isActive ? "bg-black text-white shadow-lg shadow-gray-200" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"}`}>
-                  <item.icon size={18} className={isActive ? "text-white" : "text-gray-400 group-hover:text-gray-600"} />
-                  {item.label}
+                <Link 
+                  key={item.href} 
+                  href={item.href} 
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative group ${isActive ? "bg-black text-white shadow-lg shadow-gray-200" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon size={18} className={isActive ? "text-white" : "text-gray-400 group-hover:text-gray-600"} />
+                    {item.label}
+                  </div>
+
+                  {/* ✅ The Notification Badge */}
+                  {item.hasBadge && unreadCount > 0 && !isActive && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full animate-pulse shadow-sm">
+                      {unreadCount}
+                    </span>
+                  )}
+                  
                   {isActive && <div className="absolute right-3 w-1.5 h-1.5 bg-white rounded-full opacity-50"></div>}
                 </Link>
               )
             })}
           </nav>
         </div>
+
         <div className="mt-auto p-6 border-t border-gray-100 bg-gray-50/50">
            <div className="flex items-center gap-3 mb-4 p-3 bg-white rounded-xl border border-gray-200 shadow-sm">
              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">ST</div>

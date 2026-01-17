@@ -6,28 +6,27 @@ const { auth } = NextAuth(authConfig)
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth
-  const userRole = req.auth?.user?.role
+  const userRole = req.auth?.user?.role // Expected: 'admin' | 'student'
   
-  const isOnAuthPage = req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/signup')
-  const isOnAdminArea = req.nextUrl.pathname.startsWith('/admin')
-  const isOnStudentArea = req.nextUrl.pathname.startsWith('/student')
-  const isRootPage = req.nextUrl.pathname === '/'
+  const { pathname } = req.nextUrl
+  const isOnAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup')
+  const isOnAdminArea = pathname.startsWith('/admin')
+  const isOnStudentArea = pathname.startsWith('/student')
+  const isRootPage = pathname === '/'
 
-  // 1. Redirect Logged-In Users away from Login (or Root)
+  // 1. Redirect Logged-In Users away from Login or Root to their respective dashboards
   if (isLoggedIn && (isOnAuthPage || isRootPage)) {
-    if (userRole === 'admin') {
-      return NextResponse.redirect(new URL('/admin/dashboard', req.nextUrl))
-    } else {
-      return NextResponse.redirect(new URL('/student', req.nextUrl))
-    }
+    const dashboard = userRole === 'admin' ? '/admin/dashboard' : '/student'
+    return NextResponse.redirect(new URL(dashboard, req.nextUrl))
   }
 
-  // 2. Protect Private Routes (Redirect to Login)
+  // 2. Protect Private Routes: Redirect unauthenticated users to Login
   if (!isLoggedIn && (isOnAdminArea || isOnStudentArea)) {
-    return NextResponse.redirect(new URL('/login', req.nextUrl))
+    const callbackUrl = encodeURIComponent(pathname)
+    return NextResponse.redirect(new URL(`/login?callbackUrl=${callbackUrl}`, req.nextUrl))
   }
 
-  // 3. Role-Based Access Control (RBAC)
+  // 3. Strict RBAC: Prevent students from accessing Admin areas and vice versa
   if (isLoggedIn) {
     if (isOnAdminArea && userRole !== 'admin') {
       return NextResponse.redirect(new URL('/student', req.nextUrl))
@@ -41,5 +40,10 @@ export default auth((req) => {
 })
 
 export const config = {
+  // Matches all request paths except for the ones starting with:
+  // - api (API routes)
+  // - _next/static (static files)
+  // - _next/image (image optimization files)
+  // - favicon.ico (favicon file)
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }

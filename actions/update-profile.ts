@@ -8,34 +8,32 @@ export async function updateProfileAction(formData: FormData) {
   const session = await auth()
   if (!session?.user) return { error: "Unauthorized" }
 
-  const fullName = formData.get('fullName') as string
-  const branch = formData.get('branch') as string
-  const cgpa = parseFloat(formData.get('cgpa') as string)
-  const percent10th = parseFloat(formData.get('percent10th') as string)
-  const percent12th = parseFloat(formData.get('percent12th') as string)
-  const resumeUrl = formData.get('resumeUrl') as string
-  const linkedinUrl = formData.get('linkedinUrl') as string
+  const data = {
+    fullName: formData.get('fullName') as string,
+    branch: formData.get('branch') as string,
+    gender: formData.get('gender') as string,
+    cgpa: parseFloat(formData.get('cgpa') as string) || 0,
+    percent10th: parseFloat(formData.get('percent10th') as string) || 0,
+    percent12th: parseFloat(formData.get('percent12th') as string) || 0,
+    passoutYear: parseInt(formData.get('passoutYear') as string) || 0,
+    liveBacklogs: parseInt(formData.get('liveBacklogs') as string) || 0,
+    deadBacklogs: parseInt(formData.get('deadBacklogs') as string) || 0,
+    gapYears: parseInt(formData.get('gapYears') as string) || 0,
+    resumeUrl: formData.get('resumeUrl') as string,
+    githubUrl: formData.get('githubUrl') as string,
+    // IMPORTANT: Reset verification status on update
+    isVerified: false 
+  }
 
   try {
     await db.profile.update({
       where: { userId: session.user.id },
-      data: {
-        fullName,
-        branch,
-        cgpa,
-        percent10th,
-        percent12th,
-        resumeUrl,
-        linkedinUrl
-      }
+      data: data
     })
 
-    revalidatePath('/student')
     revalidatePath('/student/profile')
-    return { success: "Profile updated successfully!" }
-
+    return { success: "Profile updated! Waiting for Admin verification." }
   } catch (error) {
-    console.error("Update Profile Error:", error)
     return { error: "Failed to update profile." }
   }
 }

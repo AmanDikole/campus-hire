@@ -7,88 +7,122 @@ async function main() {
   const password = await hash('admin123', 12)
 
   // --- 1. Create College A: MIT ---
-  console.log("Creating College A: MIT...")
-  const collegeA = await prisma.college.create({
-    data: {
+  console.log("Seeding College A: MIT...")
+  const mit = await prisma.college.upsert({
+    where: { subdomain: 'mit' },
+    update: {},
+    create: {
       name: "MIT World Peace University",
       subdomain: "mit",
       location: "Pune, India",
     }
   })
 
-  // Create Admin for MIT
-  await prisma.user.create({
-    data: {
-      email: 'admin@mit.edu', 
+  // MIT Admin
+  await prisma.user.upsert({
+    where: { 
+      // ✅ Corrected: Using composite unique key
+      email_collegeId: { email: 'admin@mit.edu', collegeId: mit.id } 
+    },
+    update: {},
+    create: {
+      email: 'admin@mit.edu',
       password,
       role: 'admin',
-      collegeId: collegeA.id
+      collegeId: mit.id
     }
   })
   
-  // Create Student for MIT
-  await prisma.user.create({
-    data: {
+  // MIT Student
+  await prisma.user.upsert({
+    where: { 
+      // ✅ Corrected: Using composite unique key
+      email_collegeId: { email: 'student@mit.edu', collegeId: mit.id } 
+    },
+    update: {},
+    create: {
       email: 'student@mit.edu',
       password,
       role: 'student',
-      collegeId: collegeA.id,
+      collegeId: mit.id,
       profile: {
         create: {
+          prnNumber: "MIT-2026-001",
           fullName: "Amit Sharma",
           branch: "CSE",
-          cgpa: 8.5
+          gender: "Male",
+          cgpa: 8.5,
+          percent10th: 92.0,
+          percent12th: 88.5,
+          passoutYear: 2026,
+          liveBacklogs: 0,
+          deadBacklogs: 0,
+          isVerified: true,
         }
       }
     }
   })
 
   // --- 2. Create College B: COEP ---
-  console.log("Creating College B: COEP...")
-  const collegeB = await prisma.college.create({
-    data: {
+  console.log("Seeding College B: COEP...")
+  const coep = await prisma.college.upsert({
+    where: { subdomain: 'coep' },
+    update: {},
+    create: {
       name: "COEP Technological University",
       subdomain: "coep",
       location: "Pune, India",
     }
   })
 
-  // Create Admin for COEP
-  await prisma.user.create({
-    data: {
+  // COEP Admin
+  await prisma.user.upsert({
+    where: { 
+      email_collegeId: { email: 'admin@coep.edu', collegeId: coep.id } 
+    },
+    update: {},
+    create: {
       email: 'admin@coep.edu',
       password,
       role: 'admin',
-      collegeId: collegeB.id
+      collegeId: coep.id
     }
   })
 
-  // Create Student for COEP
-  await prisma.user.create({
-    data: {
+  // COEP Student
+  await prisma.user.upsert({
+    where: { 
+      email_collegeId: { email: 'student@coep.edu', collegeId: coep.id } 
+    },
+    update: {},
+    create: {
       email: 'student@coep.edu',
       password,
       role: 'student',
-      collegeId: collegeB.id,
+      collegeId: coep.id,
       profile: {
         create: {
+          prnNumber: "COEP-2026-999",
           fullName: "Priya Patil",
-          branch: "ENTC",
-          cgpa: 9.2
+          branch: "AI&DS",
+          gender: "Female",
+          cgpa: 9.2,
+          percent10th: 95.0,
+          percent12th: 91.0,
+          passoutYear: 2026,
+          liveBacklogs: 0,
+          deadBacklogs: 0,
+          isVerified: true,
         }
       }
     }
   })
 
-  console.log("✅ Seeding complete! You can now log in as:")
-  console.log("   - MIT Admin: admin@mit.edu / admin123")
-  console.log("   - COEP Admin: admin@coep.edu / admin123")
+  console.log("✅ Seeding complete!")
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect()
-  })
+  .then(async () => { await prisma.$disconnect() })
   .catch(async (e) => {
     console.error(e)
     await prisma.$disconnect()

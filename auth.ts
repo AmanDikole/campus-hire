@@ -39,4 +39,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;      // 'student' or 'admin'
+        token.collegeId = user.collegeId; // Required for industrial isolation
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+        session.user.collegeId = token.collegeId as string;
+      }
+      return session;
+    },
+  },
+
+
+
 })
